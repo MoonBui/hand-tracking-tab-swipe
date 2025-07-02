@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 import time
 import math
+from SwipeTracking import SwipeTracker
 
 class HandDetector:
     def __init__(self, mode=False, maxHands=2, detectionCon=0.5, trackCon=0.5):
@@ -20,6 +21,12 @@ class HandDetector:
         )
         self.mpDraw = mp.solutions.drawing_utils
         self.tipIds = [4, 8, 12, 16, 20]
+
+        self.swipe_tracker = SwipeTracker(
+            max_points=10,
+            min_distance=40,
+            min_velocity=50
+        )
 
     def findHands(self, img, draw=True):
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -92,6 +99,51 @@ class HandDetector:
             # totalFingers = fingers.count(1)
 
         return fingers
+    
+    def update_swipe_tracking(self, fingers_to_track=None):
+        if len(self.lmList) == 0:
+            return
+        
+        if fingers_to_track is None:
+            fingers_to_track = self.tipIds
+
+        for finger_id in fingers_to_track:
+            if finger_id < len(self.lmList):
+                finger_pos = (self.lmList[finger_id][1], self.lmList[finger_id][2])
+                self.swipe_tracker.add_point(finger_id, finger_pos)
+        
+        self.swipe_tracker.cleanup_inactive_trails()
+
+
+    def check_swipes(self, fingers_to_check=None):
+        """
+        Check for swipe gestures on specified fingers.
+        Returns list of detected swipes.
+        """
+        if fingers_to_check is None:
+            fingers_to_check = self.tipIds
+        
+        detected_swipes = []
+        for finger_id in fingers_to_check:
+            swipe = self.swipe_tracker.detect_swipe(finger_id)
+            if swipe:
+                detected_swipes.append(swipe)
+                # Optionally clear the trail after detection
+                self.swipe_tracker.clear_trail(finger_id)
+        
+        return detected_swipes
+    
+    def draw_swipe_trails(self, img, fingers_to_draw=None):
+        """Draw swipe trails for specified fingers."""
+        if fingers_to_draw is None:
+            self.swipe_tracker.draw_all_trails(img)
+        else:
+            for finger_id in fingers_to_draw:
+                self.swipe_tracker.draw_trail(img, finger_id)
+    
+    def get_swipe_tracker(self):
+        """Get direct access to the swipe tracker for advanced usage."""
+        return self.swipe_tracker
 
 
 def main():
