@@ -6,10 +6,10 @@ def register_key(direction: str):
     """
     match (direction):
         case "right" | "down-right" | "up-right":
-            pyautogui.press("right")
+            pyautogui.hotkey("ctrl", "tab")
             print("right")
         case "left" | "down-left" | "up-left":
-            pyautogui.press("left")
+            pyautogui.hotkey("ctrl", "shift", "tab")
             print("left")
         case "up":
             pyautogui.press("up")
