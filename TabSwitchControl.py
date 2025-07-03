@@ -4,6 +4,7 @@ import HandTracking as ht
 import SwipeTracking as st
 import numpy as np
 import math
+import KeyRegister as kr
 
 cap = cv2.VideoCapture(0)
 detector = ht.HandDetector(detectionCon=0.75)
@@ -28,6 +29,7 @@ while True:
         for swipe in swipes:
             finger_name = {8: "Index", 12: "Middle", 16: "Ring", 20: "Pinky", 4: "Thumb"}
             name = finger_name.get(swipe['finger_id'], f"Finger {swipe['finger_id']}")
+            kr.register_key(swipe['direction'])
             
             print(f"{name} finger swiped {swipe['direction']} - "
                     f"Distance: {swipe['distance']:.1f}px, "

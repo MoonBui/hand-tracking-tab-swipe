@@ -34,7 +34,7 @@ class SwipeTracker:
         # Gesture state tracking
         self.active_gestures: Dict[int, bool] = {}
         self.last_swipe_time: Dict[int, float] = {}
-        self.swipe_cooldown = 0.5  # Minimum time between swipes for same finger
+        self.swipe_cooldown = 1.0  # Minimum time between swipes for same finger
     
     def add_point(self, finger_id: int, point: Tuple[int, int]) -> None:
         """Add a new point to the finger's trail."""
