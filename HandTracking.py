@@ -1,8 +1,17 @@
 import cv2
 import mediapipe as mp
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 import time
 import math
 from SwipeTracking import SwipeTracker
+
+# base_options = python.BaseOptions(model_asset_path='gesture_recognizer.task')
+# options = vision.GestureRecognizerOptions(
+#     base_options=base_options,
+#     running_mode=vision.RunningMode.LIVE_STREAM,
+#     result_callback=save_result)
+
 
 class HandDetector:
     def __init__(self, mode=False, maxHands=2, detectionCon=0.5, trackCon=0.5):
@@ -21,6 +30,9 @@ class HandDetector:
         )
         self.mpDraw = mp.solutions.drawing_utils
         self.tipIds = [4, 8, 12, 16, 20]
+        self.track_toggle = False
+        self.last_gesture_time = 0
+        self.gesture_cooldown = 2
 
         self.swipe_tracker = SwipeTracker(
             max_points=10,
@@ -106,7 +118,7 @@ class HandDetector:
         
         if fingers_to_track is None:
             fingers_to_track = self.tipIds
-
+        
         for finger_id in fingers_to_track:
             if finger_id < len(self.lmList):
                 finger_pos = (self.lmList[finger_id][1], self.lmList[finger_id][2])
@@ -144,6 +156,42 @@ class HandDetector:
     def get_swipe_tracker(self):
         """Get direct access to the swipe tracker for advanced usage."""
         return self.swipe_tracker
+    
+
+    def detect_victory_gesture(self):
+        if len(self.lmList) == 0:
+            return False
+        fingers = self.fingersUp()
+
+        if fingers != [0, 1, 1, 0, 0]:
+            return False
+        
+        index_tip = self.lmList[8]  # index finger tip
+        middle_tip = self.lmList[12]  # middle finger tip
+        
+        # Calculate distance between index and middle finger tips
+        distance = math.hypot(index_tip[1] - middle_tip[1], index_tip[2] - middle_tip[2])
+        
+        # They should be reasonably spread apart for a proper victory sign
+        if distance > 30: 
+            print("Victory gesture detected")
+        return distance > 30
+
+    def update_track_toggle(self):
+        current_time = time.time()
+        if current_time - self.last_gesture_time < self.gesture_cooldown:
+            return self.track_toggle
+        if self.detect_victory_gesture():
+            self.track_toggle = not self.track_toggle
+            self.last_gesture_time = current_time
+        return self.track_toggle
+    
+    def draw_tracking_status(self, img):
+        status_text = f"Tracking: {'ON' if self.track_toggle else 'OFF'}"
+        color = (0, 255, 0) if self.track_toggle else (0, 0, 255)
+        cv2.putText(img, status_text, (10, 30), cv2.FONT_HERSHEY_PLAIN, 2, color, 2)
+        instructions_text = "Victory sign to toggle swipe tracking"
+        cv2.putText(img, instructions_text, (10, 60), cv2.FONT_HERSHEY_PLAIN, 1.5, (255, 255, 255), 2)
 
 
 # Templating stuff

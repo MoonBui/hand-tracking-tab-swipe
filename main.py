@@ -41,30 +41,36 @@ def gen_frames():
             lmList, bbox = detector.findPosition(img)
             
             if len(lmList) != 0:
+                detector.update_track_toggle()
+                if detector.track_toggle:
                 # Update swipe tracking
-                detector.update_swipe_tracking(fingers_to_track)
-                
-                # Check for swipes and process immediately (no threading)
-                swipes = detector.check_swipes(fingers_to_track)
-                
-                # Process swipes directly - keep it simple
-                for swipe in swipes:
-                    finger_name = {8: "Index", 12: "Middle", 16: "Ring", 20: "Pinky", 4: "Thumb"}
-                    name = finger_name.get(swipe['finger_id'], f"Finger {swipe['finger_id']}")
-                    kr.register_key(swipe['direction'])
+                    detector.update_swipe_tracking(fingers_to_track)
+                    # Check for swipes and process immediately (no threading)
+                    swipes = detector.check_swipes(fingers_to_track)
                     
-                    print(f"{name} finger swiped {swipe['direction']} - "
-                          f"Distance: {swipe['distance']:.1f}px, "
-                          f"Speed: {swipe['velocity']:.1f}px/s")
-                
-                # Cache results for non-detection frames
+                    # Process swipes directly - keep it simple
+                    for swipe in swipes:
+                        finger_name = {8: "Index", 12: "Middle", 16: "Ring", 20: "Pinky", 4: "Thumb"}
+                        name = finger_name.get(swipe['finger_id'], f"Finger {swipe['finger_id']}")
+                        kr.register_key(swipe['direction'])
+                        
+                        print(f"{name} finger swiped {swipe['direction']} - "
+                            f"Distance: {swipe['distance']:.1f}px, "
+                            f"Speed: {swipe['velocity']:.1f}px/s")
+                        
+                    last_detection_results['active_fingers'] = detector.get_swipe_tracker().get_all_active_fingers()
+                    last_detection_results['swipes'] = swipes
+                else:
+                    last_detection_results['swipes'] = []
+                    last_detection_results['active_fingers'] = []
+                # Always cache results for hand detection
                 last_detection_results['lmList'] = lmList
                 last_detection_results['bbox'] = bbox
-                last_detection_results['active_fingers'] = detector.get_swipe_tracker().get_all_active_fingers()
-                last_detection_results['swipes'] = swipes
-        
+                
+        detector.draw_tracking_status(img)
+
         # Always draw visual elements (using cached data on non-detection frames)
-        if len(last_detection_results['lmList']) != 0:
+        if len(last_detection_results['lmList']) != 0 and detector.track_toggle:
             # Draw swipe trails
             detector.draw_swipe_trails(img, fingers_to_track)
             
@@ -81,11 +87,11 @@ def gen_frames():
                            cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 2)
 
         # Simple FPS calculation
-        cTime = time.time()
-        fps = 1/(cTime-pTime) if pTime != 0 else 0
-        pTime = cTime
-        cv2.putText(img, f"FPS: {int(fps)}", (10, 70), 
-                   cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
+        # cTime = time.time()
+        # fps = 1/(cTime-pTime) if pTime != 0 else 0
+        # pTime = cTime
+        # cv2.putText(img, f"FPS: {int(fps)}", (10, 70), 
+        #            cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
 
         # Lightweight frame encoding
         ret, buffer = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 80])
